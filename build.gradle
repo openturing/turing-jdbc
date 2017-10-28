@@ -1,0 +1,41 @@
+buildscript {
+	repositories {
+		mavenCentral()
+		 jcenter()
+	}
+}
+
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+group = 'com.viglet.turing.jdbc'
+version = '1.0-SNAPSHOT'
+
+description = "turing-jdbc"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+tasks.withType(JavaCompile) {
+	options.encoding = 'UTF-8'
+}
+
+task execute(type:JavaExec) {
+   main = mainClass
+   classpath = sourceSets.main.runtimeClasspath
+}
+
+jar {
+    baseName = 'turing-jdbc'
+    version =  '0.1.0'
+}
+
+repositories {   
+     mavenCentral()
+}
+
+
+dependencies {
+}
+
