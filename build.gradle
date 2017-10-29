@@ -3,11 +3,15 @@ buildscript {
 		mavenCentral()
 		 jcenter()
 	}
+	dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
+    }
 }
 
 
 apply plugin: 'java'
 apply plugin: 'eclipse'
+apply plugin: 'com.github.johnrengelman.shadow'
 
 group = 'com.viglet.turing.jdbc'
 version = '1.0-SNAPSHOT'
@@ -21,21 +25,23 @@ tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
 }
 
-task execute(type:JavaExec) {
-   main = mainClass
-   classpath = sourceSets.main.runtimeClasspath
-}
-
 jar {
     baseName = 'turing-jdbc'
     version =  '0.1.0'
 }
 
+shadowJar {
+   baseName = 'turing-jdbc'
+   classifier = null
+   version = 'fat-jar'
+}
 repositories {   
      mavenCentral()
 }
 
 
 dependencies {
+
+compile group: 'com.beust', name: 'jcommander', version: '1.72'
 }
 
