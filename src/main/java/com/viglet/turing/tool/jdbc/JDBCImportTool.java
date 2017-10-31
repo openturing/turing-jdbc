@@ -3,11 +3,24 @@ package com.viglet.turing.tool.jdbc;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class JDBCImportTool {
 	@Parameter(names = { "--driver", "-d" })
@@ -54,15 +67,43 @@ public class JDBCImportTool {
 			ResultSet rs = stmt.executeQuery(sql);
 
 			// STEP 5: Extract data from result set
+			JSONArray jsonResult = new JSONArray();
 			while (rs.next()) {
-				// Retrieve by column name
-				int id = rs.getInt("id");
-				String name = rs.getString("name");
+				JSONObject jsonRow = new JSONObject();
+				ResultSetMetaData rsmd = rs.getMetaData();
 
-				// Display values
-				System.out.print("ID: " + id);
-				System.out.print(", Name: " + name + "\n");
+				// Retrieve by column name
+				for (int c = 1; c <= rsmd.getColumnCount(); c++) {
+					String name = rsmd.getColumnName(c);
+					String className = rsmd.getColumnClassName(c);
+					// System.out.print("classname: " + rsmd.getColumnClassName(c) + " " + name + ":
+					// ");
+					if (className.equals("java.lang.Integer")) {
+						int intValue = rs.getInt(c);
+						// System.out.print(intValue + " ");
+						jsonRow.put(name, intValue);
+					} else {
+						String strValue = rs.getString(c);
+						// System.out.print(strValue + " ");
+						jsonRow.put(name, strValue);
+					}
+
+				}
+				jsonResult.put(jsonRow);
+				// System.out.print("\n");
+
 			}
+
+			CloseableHttpClient client = HttpClients.createDefault();
+			HttpPost httpPost = new HttpPost("http://localhost:2700/api/sn/import");
+			StringEntity entity = new StringEntity(jsonResult.toString());
+			httpPost.setEntity(entity);
+			httpPost.setHeader("Accept", "application/json");
+			httpPost.setHeader("Content-type", "application/json");
+
+			CloseableHttpResponse response = client.execute(httpPost);
+			System.out.println(response.toString());
+			client.close();
 			// STEP 6: Clean-up environment
 			rs.close();
 			stmt.close();
