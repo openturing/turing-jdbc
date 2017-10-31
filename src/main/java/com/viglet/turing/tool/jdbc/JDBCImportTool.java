@@ -1,5 +1,7 @@
 package com.viglet.turing.tool.jdbc;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -12,6 +14,7 @@ import java.util.List;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -33,6 +36,10 @@ public class JDBCImportTool {
 	String username;
 	@Parameter(names = { "--password", "-p" })
 	String password;
+	@Parameter(names = { "--type", "-t" })
+	String type;
+	@Parameter(names = { "--chunk", "-z" })
+	int chunk;
 
 	public static void main(String... argv) {
 		JDBCImportTool main = new JDBCImportTool();
@@ -68,7 +75,10 @@ public class JDBCImportTool {
 
 			// STEP 5: Extract data from result set
 			JSONArray jsonResult = new JSONArray();
+			int chunkCurrent = 0;
+			int chunkTotal = 0;
 			while (rs.next()) {
+
 				JSONObject jsonRow = new JSONObject();
 				ResultSetMetaData rsmd = rs.getMetaData();
 
@@ -89,22 +99,20 @@ public class JDBCImportTool {
 					}
 
 				}
+				jsonRow.put("type", type);
 				jsonResult.put(jsonRow);
-				
-				System.out.print(jsonResult.toString() + "\n");
 
+				chunkTotal++;
+				chunkCurrent++;
+				if (chunkCurrent == chunk) {
+					this.sendServer(jsonResult, chunkTotal);
+					chunkCurrent = 0;
+				}
 			}
-
-			CloseableHttpClient client = HttpClients.createDefault();
-			HttpPost httpPost = new HttpPost("http://localhost:2700/api/sn/import");
-			StringEntity entity = new StringEntity(jsonResult.toString());
-			httpPost.setEntity(entity);
-			httpPost.setHeader("Accept", "application/json");
-			httpPost.setHeader("Content-type", "application/json");
-
-			CloseableHttpResponse response = client.execute(httpPost);
-			System.out.println(response.toString());
-			client.close();
+			if (chunkCurrent > 0) {
+				this.sendServer(jsonResult, chunkTotal);
+				chunkCurrent = 0;
+			}
 			// STEP 6: Clean-up environment
 			rs.close();
 			stmt.close();
@@ -129,5 +137,19 @@ public class JDBCImportTool {
 				se.printStackTrace();
 			} // end finally try
 		} // end try
+	}
+
+	public void sendServer(JSONArray jsonResult, int chunkTotal) throws ClientProtocolException, IOException {
+		System.out.print("Importing " + (chunkTotal - chunk) + " to " + chunkTotal + " items\n");
+		CloseableHttpClient client = HttpClients.createDefault();
+		HttpPost httpPost = new HttpPost("http://localhost:2700/api/sn/import");
+		StringEntity entity = new StringEntity(jsonResult.toString());
+		httpPost.setEntity(entity);
+		httpPost.setHeader("Accept", "application/json");
+		httpPost.setHeader("Content-type", "application/json");
+
+		CloseableHttpResponse response = client.execute(httpPost);
+		//System.out.println(response.toString());
+		client.close();
 	}
 }
