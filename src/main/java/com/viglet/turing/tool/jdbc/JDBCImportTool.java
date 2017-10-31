@@ -74,7 +74,7 @@ public class JDBCImportTool {
 
 				// Retrieve by column name
 				for (int c = 1; c <= rsmd.getColumnCount(); c++) {
-					String name = rsmd.getColumnName(c);
+					String name = rsmd.getColumnLabel(c);
 					String className = rsmd.getColumnClassName(c);
 					// System.out.print("classname: " + rsmd.getColumnClassName(c) + " " + name + ":
 					// ");
@@ -90,7 +90,8 @@ public class JDBCImportTool {
 
 				}
 				jsonResult.put(jsonRow);
-				// System.out.print("\n");
+				
+				System.out.print(jsonResult.toString() + "\n");
 
 			}
 
