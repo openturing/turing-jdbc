@@ -22,25 +22,25 @@ import org.json.JSONObject;
 
 public class JDBCImportTool {
 	@Parameter(names = { "--driver", "-d" })
-	String driver;
+	String driver = null;
 	@Parameter(names = { "--connect", "-c" })
-	String connect;
+	String connect = null;
 	@Parameter(names = { "--query", "-q" })
-	String query;
+	String query = null;
 	@Parameter(names = { "--username", "-u" })
-	String username;
+	String username = null;
 	@Parameter(names = { "--password", "-p" })
-	String password;
+	String password = null;
 	@Parameter(names = { "--type", "-t" })
-	String type;
+	String type = "CONTENT_TYPE";
 	@Parameter(names = { "--chunk", "-z" })
-	int chunk;
+	int chunk = 100;
 	@Parameter(names = { "--include-type-in-id", "-i" }, description = "Include type in Id", arity = 1)
 	private boolean typeInId = false;
 	@Parameter(names = { "--multi-valued-separator" }, description = "Mult Valued Separator")
-	private String mvSeparator;
+	private String mvSeparator = ",";
 	@Parameter(names = { "--multi-valued-field" }, description = "Mult Valued Fields")
-	private String mvField;
+	private String mvField = "";
 
 	public static void main(String... argv) {
 		JDBCImportTool main = new JDBCImportTool();
