@@ -13,10 +13,10 @@ public class TurFormatValue {
 		for (String strHTMLField : strHTMLFields) {
 			if (name.toLowerCase().equals(strHTMLField.toLowerCase())) {
 				if (name.toLowerCase().equals("id")) {
-					this.idField(HtmlManipulator.removeScriptContent(value));
+					this.idField(HtmlManipulator.html2Text(value));
 
 				} else {
-					return HtmlManipulator.removeScriptContent(value);
+					return HtmlManipulator.html2Text(value);
 				}
 			}
 		}
