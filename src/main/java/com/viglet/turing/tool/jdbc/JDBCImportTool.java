@@ -1,27 +1,22 @@
 package com.viglet.turing.tool.jdbc;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -40,6 +35,12 @@ public class JDBCImportTool {
 	String type;
 	@Parameter(names = { "--chunk", "-z" })
 	int chunk;
+	@Parameter(names = { "--include-type-in-id", "-i" }, description = "Include type in Id", arity = 1)
+	private boolean typeInId = false;
+	@Parameter(names = { "--multi-valued-separator" }, description = "Mult Valued Separator")
+	private String mvSeparator;
+	@Parameter(names = { "--multi-valued-field" }, description = "Mult Valued Fields")
+	private String mvField;
 
 	public static void main(String... argv) {
 		JDBCImportTool main = new JDBCImportTool();
@@ -88,16 +89,39 @@ public class JDBCImportTool {
 					String className = rsmd.getColumnClassName(c);
 					// System.out.print("classname: " + rsmd.getColumnClassName(c) + " " + name + ":
 					// ");
-					if (className.equals("java.lang.Integer")) {
-						int intValue = rs.getInt(c);
-						// System.out.print(intValue + " ");
-						jsonRow.put(name, intValue);
-					} else {
-						String strValue = rs.getString(c);
-						// System.out.print(strValue + " ");
-						jsonRow.put(name, strValue);
+					String[] strMvFields = mvField.toLowerCase().split(",");
+					
+					boolean isMultiValued = false;
+					
+					for (String strMvField : strMvFields) {
+						if (name.toLowerCase().equals(strMvField.toLowerCase())) {
+							isMultiValued = true;
+							String[] mvValues = rs.getString(c).split(mvSeparator);
+							JSONArray jsonMVValues = new JSONArray();
+							for (String mvValue : mvValues) {
+								jsonMVValues.put(mvValue);
+							}
+							jsonRow.put(name, jsonMVValues);
+						}
 					}
 
+					if (!isMultiValued) {
+						if (className.equals("java.lang.Integer")) {
+							int intValue = rs.getInt(c);
+							if (name.toLowerCase().equals("id")) {
+								jsonRow.put(name, idField(intValue));
+							} else {
+								jsonRow.put(name, intValue);
+							}
+						} else {
+							String strValue = rs.getString(c);
+							if (name.toLowerCase().equals("id")) {
+								jsonRow.put(name, idField(strValue));
+							} else {
+								jsonRow.put(name, strValue);
+							}
+						}
+					}
 				}
 				jsonRow.put("type", type);
 				jsonResult.put(jsonRow);
@@ -139,6 +163,22 @@ public class JDBCImportTool {
 		} // end try
 	}
 
+	public String idField(int idValue) {
+		if (typeInId) {
+			return type + idValue;
+		} else {
+			return Integer.toString(idValue);
+		}
+	}
+
+	public String idField(String idValue) {
+		if (typeInId) {
+			return type + idValue;
+		} else {
+			return idValue;
+		}
+	}
+
 	public void sendServer(JSONArray jsonResult, int chunkTotal) throws ClientProtocolException, IOException {
 		System.out.print("Importing " + (chunkTotal - chunk) + " to " + chunkTotal + " items\n");
 		CloseableHttpClient client = HttpClients.createDefault();
@@ -149,7 +189,7 @@ public class JDBCImportTool {
 		httpPost.setHeader("Content-type", "application/json");
 
 		CloseableHttpResponse response = client.execute(httpPost);
-		//System.out.println(response.toString());
+		// System.out.println(response.toString());
 		client.close();
 	}
 }
