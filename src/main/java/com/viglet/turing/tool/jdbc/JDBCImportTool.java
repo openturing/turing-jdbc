@@ -12,7 +12,6 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 import com.viglet.turing.tool.jdbc.format.TurFormatValue;
-import com.viglet.turing.util.HtmlManipulator;
 
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -36,6 +35,9 @@ public class JDBCImportTool {
 
 	@Parameter(names = { "--query", "-q" }, description = "Import the results of statement", required = true)
 	private String query = null;
+
+	@Parameter(names = { "--site" }, description = "Specify the Semantic Navigation Site", required = true)
+	private String site = null;
 
 	@Parameter(names = { "--server", "-s" }, description = "Viglet Turing Server")
 	private String turingServer = "http://localhost:2700";
@@ -68,7 +70,7 @@ public class JDBCImportTool {
 	private boolean help = false;
 
 	private static TurFormatValue turFormatValue = null;
-	
+
 	public static void main(String... argv) {
 
 		JDBCImportTool main = new JDBCImportTool();
@@ -137,19 +139,21 @@ public class JDBCImportTool {
 					for (String strMvField : strMvFields) {
 						if (name.toLowerCase().equals(strMvField.toLowerCase())) {
 							isMultiValued = true;
-							String[] mvValues = rs.getString(c).split(mvSeparator);
-							JSONArray jsonMVValues = new JSONArray();
-							for (String mvValue : mvValues) {
-								jsonMVValues.put(turFormatValue.format(name, mvValue));
+							if (rs.getString(c) != null) {
+								String[] mvValues = rs.getString(c).split(mvSeparator);
+								JSONArray jsonMVValues = new JSONArray();
+								for (String mvValue : mvValues) {
+									jsonMVValues.put(turFormatValue.format(name, mvValue));
+								}
+								jsonRow.put(name, jsonMVValues);
 							}
-							jsonRow.put(name, jsonMVValues);
 						}
 					}
 
 					if (!isMultiValued) {
 						if (className.equals("java.lang.Integer")) {
 							int intValue = rs.getInt(c);
-							jsonRow.put(name, turFormatValue.format(name,Integer.toString(intValue)));
+							jsonRow.put(name, turFormatValue.format(name, Integer.toString(intValue)));
 						} else {
 							String strValue = rs.getString(c);
 							jsonRow.put(name, turFormatValue.format(name, strValue));
@@ -196,11 +200,14 @@ public class JDBCImportTool {
 		} // end try
 	}
 
-
 	public void sendServer(JSONArray jsonResult, int chunkTotal) throws ClientProtocolException, IOException {
-		System.out.print("Importing " + (chunkTotal - chunk) + " to " + chunkTotal + " items\n");
+		int initial = 1;
+		if (chunkTotal > chunk) {
+			initial = chunkTotal - chunk;
+		}
+		System.out.print("Importing " + initial + " to " + chunkTotal + " items\n");
 		CloseableHttpClient client = HttpClients.createDefault();
-		HttpPost httpPost = new HttpPost(String.format("%s/api/sn/import", turingServer));
+		HttpPost httpPost = new HttpPost(String.format("%s/api/sn/%s/import", turingServer, site));
 		StringEntity entity = new StringEntity(jsonResult.toString());
 		httpPost.setEntity(entity);
 		httpPost.setHeader("Accept", "application/json");
