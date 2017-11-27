@@ -124,7 +124,7 @@ public class JDBCImportTool {
 			int chunkCurrent = 0;
 			int chunkTotal = 0;
 			while (rs.next()) {
-
+				
 				JSONObject jsonRow = new JSONObject();
 				ResultSetMetaData rsmd = rs.getMetaData();
 
@@ -167,11 +167,13 @@ public class JDBCImportTool {
 				chunkCurrent++;
 				if (chunkCurrent == chunk) {
 					this.sendServer(jsonResult, chunkTotal);
+					jsonResult = new JSONArray();
 					chunkCurrent = 0;
 				}
 			}
 			if (chunkCurrent > 0) {
 				this.sendServer(jsonResult, chunkTotal);
+				jsonResult = new JSONArray();
 				chunkCurrent = 0;
 			}
 			// STEP 6: Clean-up environment
