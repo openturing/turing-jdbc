@@ -130,7 +130,7 @@ public class JDBCImportTool {
 
 				// Retrieve by column name
 				for (int c = 1; c <= rsmd.getColumnCount(); c++) {
-					String name = rsmd.getColumnLabel(c);
+					String name = rsmd.getColumnLabel(c).toLowerCase();
 					String className = rsmd.getColumnClassName(c);
 					String[] strMvFields = mvField.toLowerCase().split(",");
 
