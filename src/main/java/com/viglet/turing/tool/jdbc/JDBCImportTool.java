@@ -66,6 +66,9 @@ public class JDBCImportTool {
 	@Parameter(names = { "--remove-html-tags-field" }, description = "Remove HTML Tags into content of field")
 	public String htmlField = "";
 
+	@Parameter(names = { "--show-utput" }, description = "Show Output")
+	public boolean showOutput = false;
+
 	@Parameter(names = "--help", description = "Print usage instructions", help = true)
 	private boolean help = false;
 
@@ -124,7 +127,7 @@ public class JDBCImportTool {
 			int chunkCurrent = 0;
 			int chunkTotal = 0;
 			while (rs.next()) {
-				
+
 				JSONObject jsonRow = new JSONObject();
 				ResultSetMetaData rsmd = rs.getMetaData();
 
@@ -162,7 +165,9 @@ public class JDBCImportTool {
 				}
 				jsonRow.put("type", type);
 				jsonResult.put(jsonRow);
-
+				if (showOutput) {
+					System.out.println(jsonResult.toString());
+				}
 				chunkTotal++;
 				chunkCurrent++;
 				if (chunkCurrent == chunk) {
