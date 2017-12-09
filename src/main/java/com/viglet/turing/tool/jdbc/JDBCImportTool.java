@@ -66,7 +66,7 @@ public class JDBCImportTool {
 	@Parameter(names = { "--remove-html-tags-field" }, description = "Remove HTML Tags into content of field")
 	public String htmlField = "";
 
-	@Parameter(names = { "--show-utput" }, description = "Show Output")
+	@Parameter(names = { "--show-output", "-o" }, description = "Show Output", arity = 1)
 	public boolean showOutput = false;
 
 	@Parameter(names = "--help", description = "Print usage instructions", help = true)
