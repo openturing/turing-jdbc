@@ -1,6 +1,7 @@
 package com.viglet.turing.tool.jdbc;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -14,6 +15,7 @@ import com.beust.jcommander.ParameterException;
 import com.viglet.turing.tool.jdbc.format.TurFormatValue;
 
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -215,10 +217,11 @@ public class JDBCImportTool {
 		System.out.print("Importing " + initial + " to " + chunkTotal + " items\n");
 		CloseableHttpClient client = HttpClients.createDefault();
 		HttpPost httpPost = new HttpPost(String.format("%s/api/sn/%s/import", turingServer, site));
-		StringEntity entity = new StringEntity(jsonResult.toString());
+		StringEntity entity = new StringEntity(jsonResult.toString(), "UTF-8");
 		httpPost.setEntity(entity);
 		httpPost.setHeader("Accept", "application/json");
 		httpPost.setHeader("Content-type", "application/json");
+		httpPost.setHeader("Accept-Encoding", "UTF-8");
 
 		CloseableHttpResponse response = client.execute(httpPost);
 		// System.out.println(response.toString());
