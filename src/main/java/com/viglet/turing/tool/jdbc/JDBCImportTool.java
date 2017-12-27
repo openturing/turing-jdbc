@@ -1,7 +1,9 @@
 package com.viglet.turing.tool.jdbc;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -15,7 +17,6 @@ import com.beust.jcommander.ParameterException;
 import com.viglet.turing.tool.jdbc.format.TurFormatValue;
 
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -71,6 +72,9 @@ public class JDBCImportTool {
 	@Parameter(names = { "--show-output", "-o" }, description = "Show Output", arity = 1)
 	public boolean showOutput = false;
 
+	@Parameter(names = { "--encoding" }, description = "Encoding Source")
+	public String encoding = "UTF-8";
+	
 	@Parameter(names = "--help", description = "Print usage instructions", help = true)
 	private boolean help = false;
 
@@ -167,9 +171,7 @@ public class JDBCImportTool {
 				}
 				jsonRow.put("type", type);
 				jsonResult.put(jsonRow);
-				if (showOutput) {
-					System.out.println(jsonResult.toString());
-				}
+			
 				chunkTotal++;
 				chunkCurrent++;
 				if (chunkCurrent == chunk) {
@@ -214,10 +216,28 @@ public class JDBCImportTool {
 		if (chunkTotal > chunk) {
 			initial = chunkTotal - chunk;
 		}
+
+		Charset utf8Charset = Charset.forName("UTF-8");
+		Charset customCharset = Charset.forName(encoding);
+
+		ByteBuffer inputBuffer = ByteBuffer.wrap(jsonResult.toString().getBytes());
+
+		// decode UTF-8
+		CharBuffer data = utf8Charset.decode(inputBuffer);
+
+		// encode
+		ByteBuffer outputBuffer = customCharset.encode(data);
+		
+		byte[] outputData = new String(outputBuffer.array()).getBytes("UTF-8");
+		String jsonUTF8 = new String(outputData);
+
 		System.out.print("Importing " + initial + " to " + chunkTotal + " items\n");
 		CloseableHttpClient client = HttpClients.createDefault();
 		HttpPost httpPost = new HttpPost(String.format("%s/api/sn/%s/import", turingServer, site));
-		StringEntity entity = new StringEntity(jsonResult.toString(), "UTF-8");
+		if (showOutput) {
+			System.out.println(jsonUTF8);
+		}
+		StringEntity entity = new StringEntity(new String(jsonUTF8), "UTF-8");
 		httpPost.setEntity(entity);
 		httpPost.setHeader("Accept", "application/json");
 		httpPost.setHeader("Content-type", "application/json");
