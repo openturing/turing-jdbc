@@ -42,7 +42,7 @@ FROM
             		m.language = 'pt'
             GROUP BY
                 m.csmoviedb_id
-	    LIMIT 1
+	    LIMIT 500
         ) m1
     LEFT JOIN CSMovieDBExtra e ON
         (m1.id = e.csmoviedb_id)
