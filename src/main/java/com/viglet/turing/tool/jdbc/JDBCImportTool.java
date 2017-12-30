@@ -10,6 +10,15 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
+import java.util.TimeZone;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -74,7 +83,7 @@ public class JDBCImportTool {
 
 	@Parameter(names = { "--encoding" }, description = "Encoding Source")
 	public String encoding = "UTF-8";
-	
+
 	@Parameter(names = "--help", description = "Print usage instructions", help = true)
 	private boolean help = false;
 
@@ -163,6 +172,11 @@ public class JDBCImportTool {
 						if (className.equals("java.lang.Integer")) {
 							int intValue = rs.getInt(c);
 							jsonRow.put(name, turFormatValue.format(name, Integer.toString(intValue)));
+						} else if (className.equals("java.sql.Timestamp")) {
+							TimeZone tz = TimeZone.getTimeZone("UTC");
+							DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
+							df.setTimeZone(tz);
+							jsonRow.put(name, turFormatValue.format(name, df.format(rs.getDate(c))));
 						} else {
 							String strValue = rs.getString(c);
 							jsonRow.put(name, turFormatValue.format(name, strValue));
@@ -171,7 +185,7 @@ public class JDBCImportTool {
 				}
 				jsonRow.put("type", type);
 				jsonResult.put(jsonRow);
-			
+
 				chunkTotal++;
 				chunkCurrent++;
 				if (chunkCurrent == chunk) {
@@ -227,7 +241,7 @@ public class JDBCImportTool {
 
 		// encode
 		ByteBuffer outputBuffer = customCharset.encode(data);
-		
+
 		byte[] outputData = new String(outputBuffer.array()).getBytes("UTF-8");
 		String jsonUTF8 = new String(outputData);
 
