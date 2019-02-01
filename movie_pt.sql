@@ -17,7 +17,7 @@ FROM
                 m.csmoviedb_id AS id,
                 m.original_title AS title,
                 m.overview AS text,
-                m.release_date AS original_date,
+                m.release_date AS publication_date,
                 CONCAT_WS(
                     '',
                     'https://image.tmdb.org/t/p/w300',
@@ -42,7 +42,7 @@ FROM
             		m.language = 'pt'
             GROUP BY
                 m.csmoviedb_id
-	    LIMIT 1
+	    LIMIT 500
         ) m1
     LEFT JOIN CSMovieDBExtra e ON
         (m1.id = e.csmoviedb_id)

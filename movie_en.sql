@@ -17,7 +17,7 @@ FROM
                 m.csmoviedb_id AS id,
                 m.original_title AS title,
                 m.overview AS text,
-                m.release_date AS original_date,
+                m.release_date AS publication_date,
                 CONCAT_WS(
                     '',
                     'https://image.tmdb.org/t/p/w300',

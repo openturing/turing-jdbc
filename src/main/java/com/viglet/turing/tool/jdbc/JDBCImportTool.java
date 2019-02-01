@@ -12,12 +12,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
 import java.util.TimeZone;
 
 import com.beust.jcommander.JCommander;
@@ -137,7 +131,7 @@ public class JDBCImportTool {
 			sql = query;
 			ResultSet rs = stmt.executeQuery(sql);
 
-			// STEP 5: Extract data from result set
+			// Extract data from result set
 			JSONArray jsonResult = new JSONArray();
 			int chunkCurrent = 0;
 			int chunkTotal = 0;
