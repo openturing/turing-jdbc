@@ -12,11 +12,19 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.viglet.turing.api.sn.job.TurSNJobAction;
+import com.viglet.turing.api.sn.job.TurSNJobItem;
+import com.viglet.turing.api.sn.job.TurSNJobItems;
 import com.viglet.turing.tool.jdbc.format.TurFormatValue;
 
 import org.apache.http.client.ClientProtocolException;
@@ -27,8 +35,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.json.JSONArray;
-import org.json.JSONObject;
+
 
 public class JDBCImportTool {
 	static final Logger logger = LogManager.getLogger(JDBCImportTool.class.getName());
@@ -132,12 +139,15 @@ public class JDBCImportTool {
 			ResultSet rs = stmt.executeQuery(sql);
 
 			// Extract data from result set
-			JSONArray jsonResult = new JSONArray();
 			int chunkCurrent = 0;
 			int chunkTotal = 0;
+			TurSNJobItems turSNJobItems = new TurSNJobItems();
+					
 			while (rs.next()) {
-
-				JSONObject jsonRow = new JSONObject();
+				TurSNJobItem turSNJobItem = new TurSNJobItem();
+				turSNJobItem.setTurSNJobAction(TurSNJobAction.CREATE);
+				Map<String, Object> attributes = new HashMap<String, Object>();
+				
 				ResultSetMetaData rsmd = rs.getMetaData();
 
 				// Retrieve by column name
@@ -153,11 +163,13 @@ public class JDBCImportTool {
 							isMultiValued = true;
 							if (rs.getString(c) != null) {
 								String[] mvValues = rs.getString(c).split(mvSeparator);
-								JSONArray jsonMVValues = new JSONArray();
+								List<String> multiValueList = new ArrayList<String>();
+
 								for (String mvValue : mvValues) {
-									jsonMVValues.put(turFormatValue.format(name, mvValue));
+									multiValueList.add(turFormatValue.format(name, mvValue));
+									
 								}
-								jsonRow.put(name, jsonMVValues);
+								attributes.put(name, multiValueList);
 							}
 						}
 					}
@@ -165,32 +177,34 @@ public class JDBCImportTool {
 					if (!isMultiValued) {
 						if (className.equals("java.lang.Integer")) {
 							int intValue = rs.getInt(c);
-							jsonRow.put(name, turFormatValue.format(name, Integer.toString(intValue)));
+							attributes.put(name, turFormatValue.format(name, Integer.toString(intValue)));
 						} else if (className.equals("java.sql.Timestamp")) {
 							TimeZone tz = TimeZone.getTimeZone("UTC");
 							DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
 							df.setTimeZone(tz);
-							jsonRow.put(name, turFormatValue.format(name, df.format(rs.getDate(c))));
+							attributes.put(name, turFormatValue.format(name, df.format(rs.getDate(c))));
 						} else {
 							String strValue = rs.getString(c);
-							jsonRow.put(name, turFormatValue.format(name, strValue));
+							attributes.put(name, turFormatValue.format(name, strValue));
 						}
 					}
 				}
-				jsonRow.put("type", type);
-				jsonResult.put(jsonRow);
+				attributes.put("type", type);
+				turSNJobItem.setAttributes(attributes);
+				turSNJobItems.add(turSNJobItem);
 
 				chunkTotal++;
 				chunkCurrent++;
 				if (chunkCurrent == chunk) {
-					this.sendServer(jsonResult, chunkTotal);
-					jsonResult = new JSONArray();
+					this.sendServer(turSNJobItems, chunkTotal);
+					turSNJobItems =  new TurSNJobItems();
 					chunkCurrent = 0;
 				}
 			}
 			if (chunkCurrent > 0) {
-				this.sendServer(jsonResult, chunkTotal);
-				jsonResult = new JSONArray();
+				
+				this.sendServer(turSNJobItems, chunkTotal);
+				turSNJobItems =  new TurSNJobItems();
 				chunkCurrent = 0;
 			}
 			// STEP 6: Clean-up environment
@@ -219,7 +233,9 @@ public class JDBCImportTool {
 		} // end try
 	}
 
-	public void sendServer(JSONArray jsonResult, int chunkTotal) throws ClientProtocolException, IOException {
+	public void sendServer(TurSNJobItems turSNJobItems, int chunkTotal) throws ClientProtocolException, IOException {
+		ObjectMapper mapper = new ObjectMapper();
+		String jsonResult = mapper.writeValueAsString(turSNJobItems);
 		int initial = 1;
 		if (chunkTotal > chunk) {
 			initial = chunkTotal - chunk;
@@ -228,7 +244,7 @@ public class JDBCImportTool {
 		Charset utf8Charset = Charset.forName("UTF-8");
 		Charset customCharset = Charset.forName(encoding);
 
-		ByteBuffer inputBuffer = ByteBuffer.wrap(jsonResult.toString().getBytes());
+		ByteBuffer inputBuffer = ByteBuffer.wrap(jsonResult.getBytes());
 
 		// decode UTF-8
 		CharBuffer data = utf8Charset.decode(inputBuffer);
