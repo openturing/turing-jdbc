@@ -1,6 +1,9 @@
 package com.viglet.turing.tool.jdbc;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -25,8 +28,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.viglet.turing.api.sn.job.TurSNJobAction;
 import com.viglet.turing.api.sn.job.TurSNJobItem;
 import com.viglet.turing.api.sn.job.TurSNJobItems;
+import com.viglet.turing.tool.file.TurFileAttributes;
 import com.viglet.turing.tool.jdbc.format.TurFormatValue;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -35,7 +40,12 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.pdf.PDFParser;
+import org.apache.tika.sax.BodyContentHandler;
+import org.xml.sax.SAXException;
 
 public class JDBCImportTool {
 	static final Logger logger = LogManager.getLogger(JDBCImportTool.class.getName());
@@ -79,6 +89,15 @@ public class JDBCImportTool {
 	@Parameter(names = { "--remove-html-tags-field" }, description = "Remove HTML Tags into content of field")
 	public String htmlField = "";
 
+	@Parameter(names = "--file-path-field", description = "Field with File Path", help = true)
+	private String filePathField = null;
+
+	@Parameter(names = "--file-content-field", description = "Field that shows Content of File", help = true)
+	private String fileContentField = null;
+
+	@Parameter(names = "--file-size-field", description = "Field that shows Size of File in bytes", help = true)
+	private String fileSizeField = null;
+
 	@Parameter(names = { "--show-output", "-o" }, description = "Show Output", arity = 1)
 	public boolean showOutput = false;
 
@@ -120,6 +139,46 @@ public class JDBCImportTool {
 		this.select();
 	}
 
+	private TurFileAttributes readFile(String filePath) {
+
+		try {
+			File file = new File(filePath);
+			if (file.exists()) {
+				if (FilenameUtils.getExtension(filePath).toLowerCase().equals("pdf")) {
+
+					InputStream inputStream = new FileInputStream(file);
+
+					BodyContentHandler handler = new BodyContentHandler(-1);
+					Metadata metadata = new Metadata();
+
+					ParseContext pcontext = new ParseContext();
+
+					// parsing the document using PDF parser
+					PDFParser pdfparser = new PDFParser();
+
+					pdfparser.parse(inputStream, handler, metadata, pcontext);
+					TurFileAttributes turFileAttributes = new TurFileAttributes();
+					turFileAttributes.setContent(handler.toString());
+					turFileAttributes.setFile(file);
+					turFileAttributes.setMetadata(metadata);
+					
+					return turFileAttributes;
+				} else {
+					logger.info("File is not a PDF: " + filePath);
+				}
+
+			} else {
+				logger.info("File not exists: " + filePath);
+			}
+		} catch (IOException | SAXException | TikaException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return null;
+
+	}
+
 	public void select() {
 		Connection conn = null;
 		Statement stmt = null;
@@ -142,12 +201,12 @@ public class JDBCImportTool {
 			int chunkCurrent = 0;
 			int chunkTotal = 0;
 			TurSNJobItems turSNJobItems = new TurSNJobItems();
-					
+
 			while (rs.next()) {
 				TurSNJobItem turSNJobItem = new TurSNJobItem();
 				turSNJobItem.setTurSNJobAction(TurSNJobAction.CREATE);
 				Map<String, Object> attributes = new HashMap<String, Object>();
-				
+
 				ResultSetMetaData rsmd = rs.getMetaData();
 
 				// Retrieve by column name
@@ -167,7 +226,7 @@ public class JDBCImportTool {
 
 								for (String mvValue : mvValues) {
 									multiValueList.add(turFormatValue.format(name, mvValue));
-									
+
 								}
 								attributes.put(name, multiValueList);
 							}
@@ -190,6 +249,28 @@ public class JDBCImportTool {
 					}
 				}
 				attributes.put("type", type);
+
+				if (filePathField != null && attributes.containsKey(filePathField)) {
+					TurFileAttributes turFileAttributes = this.readFile((String) attributes.get(filePathField));
+					if (turFileAttributes != null) {
+						if (fileSizeField != null && turFileAttributes.getFile() != null) {
+							attributes.put(fileSizeField, turFileAttributes.getFile().length());
+						} else {
+							logger.info("File without size: " + filePathField);
+						}
+
+						if (fileContentField != null) {
+							attributes.put(fileContentField, turFileAttributes.getContent());
+						} else {
+							logger.info("File without content: " + filePathField);
+						}
+
+					} else {
+						logger.info("turFileAttributes is null: " + filePathField);
+					}
+
+				}
+
 				turSNJobItem.setAttributes(attributes);
 				turSNJobItems.add(turSNJobItem);
 
@@ -197,14 +278,14 @@ public class JDBCImportTool {
 				chunkCurrent++;
 				if (chunkCurrent == chunk) {
 					this.sendServer(turSNJobItems, chunkTotal);
-					turSNJobItems =  new TurSNJobItems();
+					turSNJobItems = new TurSNJobItems();
 					chunkCurrent = 0;
 				}
 			}
 			if (chunkCurrent > 0) {
-				
+
 				this.sendServer(turSNJobItems, chunkTotal);
-				turSNJobItems =  new TurSNJobItems();
+				turSNJobItems = new TurSNJobItems();
 				chunkCurrent = 0;
 			}
 			// STEP 6: Clean-up environment
@@ -267,6 +348,7 @@ public class JDBCImportTool {
 		httpPost.setHeader("Content-type", "application/json");
 		httpPost.setHeader("Accept-Encoding", "UTF-8");
 
+		@SuppressWarnings("unused")
 		CloseableHttpResponse response = client.execute(httpPost);
 		// System.out.println(response.toString());
 		client.close();
