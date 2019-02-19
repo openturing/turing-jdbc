@@ -42,6 +42,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.pdf.PDFParser;
 import org.apache.tika.sax.BodyContentHandler;
@@ -144,29 +145,21 @@ public class JDBCImportTool {
 		try {
 			File file = new File(filePath);
 			if (file.exists()) {
-				if (FilenameUtils.getExtension(filePath).toLowerCase().equals("pdf")) {
+				InputStream inputStream = new FileInputStream(file);
 
-					InputStream inputStream = new FileInputStream(file);
+				AutoDetectParser parser = new AutoDetectParser();
+				BodyContentHandler handler = new BodyContentHandler();
+				Metadata metadata = new Metadata();
 
-					BodyContentHandler handler = new BodyContentHandler(-1);
-					Metadata metadata = new Metadata();
+				ParseContext pcontext = new ParseContext();
 
-					ParseContext pcontext = new ParseContext();
+				parser.parse(inputStream, handler, metadata, pcontext);
+				TurFileAttributes turFileAttributes = new TurFileAttributes();
+				turFileAttributes.setContent(handler.toString());
+				turFileAttributes.setFile(file);
+				turFileAttributes.setMetadata(metadata);
 
-					// parsing the document using PDF parser
-					PDFParser pdfparser = new PDFParser();
-
-					pdfparser.parse(inputStream, handler, metadata, pcontext);
-					TurFileAttributes turFileAttributes = new TurFileAttributes();
-					turFileAttributes.setContent(handler.toString());
-					turFileAttributes.setFile(file);
-					turFileAttributes.setMetadata(metadata);
-					
-					return turFileAttributes;
-				} else {
-					logger.info("File is not a PDF: " + filePath);
-				}
-
+				return turFileAttributes;
 			} else {
 				logger.info("File not exists: " + filePath);
 			}
@@ -211,6 +204,7 @@ public class JDBCImportTool {
 
 				// Retrieve by column name
 				for (int c = 1; c <= rsmd.getColumnCount(); c++) {
+					String nameSensitve = rsmd.getColumnLabel(c);
 					String name = rsmd.getColumnLabel(c).toLowerCase();
 					String className = rsmd.getColumnClassName(c);
 					String[] strMvFields = mvField.toLowerCase().split(",");
@@ -218,7 +212,7 @@ public class JDBCImportTool {
 					boolean isMultiValued = false;
 
 					for (String strMvField : strMvFields) {
-						if (name.toLowerCase().equals(strMvField.toLowerCase())) {
+						if (name.equals(strMvField.toLowerCase())) {
 							isMultiValued = true;
 							if (rs.getString(c) != null) {
 								String[] mvValues = rs.getString(c).split(mvSeparator);
@@ -228,7 +222,7 @@ public class JDBCImportTool {
 									multiValueList.add(turFormatValue.format(name, mvValue));
 
 								}
-								attributes.put(name, multiValueList);
+								attributes.put(nameSensitve, multiValueList);
 							}
 						}
 					}
@@ -236,15 +230,15 @@ public class JDBCImportTool {
 					if (!isMultiValued) {
 						if (className.equals("java.lang.Integer")) {
 							int intValue = rs.getInt(c);
-							attributes.put(name, turFormatValue.format(name, Integer.toString(intValue)));
+							attributes.put(nameSensitve, turFormatValue.format(nameSensitve, Integer.toString(intValue)));
 						} else if (className.equals("java.sql.Timestamp")) {
 							TimeZone tz = TimeZone.getTimeZone("UTC");
 							DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
 							df.setTimeZone(tz);
-							attributes.put(name, turFormatValue.format(name, df.format(rs.getDate(c))));
+							attributes.put(nameSensitve, turFormatValue.format(nameSensitve, df.format(rs.getDate(c))));
 						} else {
 							String strValue = rs.getString(c);
-							attributes.put(name, turFormatValue.format(name, strValue));
+							attributes.put(nameSensitve, turFormatValue.format(nameSensitve, strValue));
 						}
 					}
 				}
