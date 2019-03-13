@@ -15,4 +15,4 @@ echo PT_BR
 
 echo Movie
 MOVIE_SQL=`cat movie_pt.sql` 
-./turing-jdbc.sh --encoding ISO-8859-9  --site 1 -t Movie --multi-valued-separator "," --multi-valued-field cast,persona,streaming,tv,genres --include-type-in-id true -z 100 -d com.mysql.cj.jdbc.Driver -c jdbc:mysql://localhost/cinestamp  -q "${MOVIE_SQL}" -u cinestamp -p cinestamp
+./turing-jdbc.sh --class-name com.viglet.turing.tool.ext.TurJDBCCustomSample --encoding ISO-8859-9  --site Sample -t Movie --multi-valued-separator "," --multi-valued-field cast,persona,streaming,tv,genres --include-type-in-id true -z 100 -d com.mysql.jdbc.Driver -c jdbc:mysql://localhost/cinestamp  -q "${MOVIE_SQL}" -u cinestamp -p cinestamp

@@ -29,9 +29,9 @@ import com.viglet.turing.api.sn.job.TurSNJobAction;
 import com.viglet.turing.api.sn.job.TurSNJobItem;
 import com.viglet.turing.api.sn.job.TurSNJobItems;
 import com.viglet.turing.tool.file.TurFileAttributes;
+import com.viglet.turing.tool.impl.TurJDBCCustomImpl;
 import com.viglet.turing.tool.jdbc.format.TurFormatValue;
 
-import org.apache.commons.io.FilenameUtils;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -44,7 +44,6 @@ import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
-import org.apache.tika.parser.pdf.PDFParser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.xml.sax.SAXException;
 
@@ -99,6 +98,9 @@ public class JDBCImportTool {
 	@Parameter(names = "--file-size-field", description = "Field that shows Size of File in bytes", help = true)
 	private String fileSizeField = null;
 
+	@Parameter(names = "--class-name", description = "Customized Class to modified rows", help = true)
+	private String customClassName = null;
+
 	@Parameter(names = { "--show-output", "-o" }, description = "Show Output", arity = 1)
 	public boolean showOutput = false;
 
@@ -148,7 +150,8 @@ public class JDBCImportTool {
 				InputStream inputStream = new FileInputStream(file);
 
 				AutoDetectParser parser = new AutoDetectParser();
-				BodyContentHandler handler = new BodyContentHandler();
+				// -1 = no limit of number of characters
+				BodyContentHandler handler = new BodyContentHandler(-1);
 				Metadata metadata = new Metadata();
 
 				ParseContext pcontext = new ParseContext();
@@ -175,6 +178,15 @@ public class JDBCImportTool {
 	public void select() {
 		Connection conn = null;
 		Statement stmt = null;
+		TurJDBCCustomImpl turJDBCCustomImpl = null;
+		if (customClassName != null) {
+			try {
+				turJDBCCustomImpl = (TurJDBCCustomImpl) Class.forName(customClassName).newInstance();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
 		try {
 			// Register JDBC driver
 			Class.forName(driver);
@@ -230,7 +242,8 @@ public class JDBCImportTool {
 					if (!isMultiValued) {
 						if (className.equals("java.lang.Integer")) {
 							int intValue = rs.getInt(c);
-							attributes.put(nameSensitve, turFormatValue.format(nameSensitve, Integer.toString(intValue)));
+							attributes.put(nameSensitve,
+									turFormatValue.format(nameSensitve, Integer.toString(intValue)));
 						} else if (className.equals("java.sql.Timestamp")) {
 							TimeZone tz = TimeZone.getTimeZone("UTC");
 							DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
@@ -259,13 +272,15 @@ public class JDBCImportTool {
 							logger.info("File without content: " + filePathField);
 						}
 
-					} else {
+					} else
 						logger.info("turFileAttributes is null: " + filePathField);
-					}
-
 				}
 
-				turSNJobItem.setAttributes(attributes);
+				if (customClassName != null && turJDBCCustomImpl != null)
+					turSNJobItem.setAttributes(turJDBCCustomImpl.run(conn, attributes));
+				else
+					turSNJobItem.setAttributes(attributes);
+
 				turSNJobItems.add(turSNJobItem);
 
 				chunkTotal++;
@@ -344,7 +359,7 @@ public class JDBCImportTool {
 
 		@SuppressWarnings("unused")
 		CloseableHttpResponse response = client.execute(httpPost);
-		// System.out.println(response.toString());
+
 		client.close();
 	}
 }
