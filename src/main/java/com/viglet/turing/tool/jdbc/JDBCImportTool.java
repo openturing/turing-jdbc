@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TimeZone;
 
 import com.beust.jcommander.JCommander;
@@ -217,42 +218,19 @@ public class JDBCImportTool {
 				// Retrieve by column name
 				for (int c = 1; c <= rsmd.getColumnCount(); c++) {
 					String nameSensitve = rsmd.getColumnLabel(c);
-					String name = rsmd.getColumnLabel(c).toLowerCase();
 					String className = rsmd.getColumnClassName(c);
-					String[] strMvFields = mvField.toLowerCase().split(",");
 
-					boolean isMultiValued = false;
-
-					for (String strMvField : strMvFields) {
-						if (name.equals(strMvField.toLowerCase())) {
-							isMultiValued = true;
-							if (rs.getString(c) != null) {
-								String[] mvValues = rs.getString(c).split(mvSeparator);
-								List<String> multiValueList = new ArrayList<String>();
-
-								for (String mvValue : mvValues) {
-									multiValueList.add(turFormatValue.format(name, mvValue));
-
-								}
-								attributes.put(nameSensitve, multiValueList);
-							}
-						}
-					}
-
-					if (!isMultiValued) {
-						if (className.equals("java.lang.Integer")) {
-							int intValue = rs.getInt(c);
-							attributes.put(nameSensitve,
-									turFormatValue.format(nameSensitve, Integer.toString(intValue)));
-						} else if (className.equals("java.sql.Timestamp")) {
-							TimeZone tz = TimeZone.getTimeZone("UTC");
-							DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
-							df.setTimeZone(tz);
-							attributes.put(nameSensitve, turFormatValue.format(nameSensitve, df.format(rs.getDate(c))));
-						} else {
-							String strValue = rs.getString(c);
-							attributes.put(nameSensitve, turFormatValue.format(nameSensitve, strValue));
-						}
+					if (className.equals("java.lang.Integer")) {
+						int intValue = rs.getInt(c);
+						attributes.put(nameSensitve, turFormatValue.format(nameSensitve, Integer.toString(intValue)));
+					} else if (className.equals("java.sql.Timestamp")) {
+						TimeZone tz = TimeZone.getTimeZone("UTC");
+						DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
+						df.setTimeZone(tz);
+						attributes.put(nameSensitve, turFormatValue.format(nameSensitve, df.format(rs.getDate(c))));
+					} else {
+						String strValue = rs.getString(c);
+						attributes.put(nameSensitve, turFormatValue.format(nameSensitve, strValue));
 					}
 				}
 				attributes.put("type", type);
@@ -277,9 +255,30 @@ public class JDBCImportTool {
 				}
 
 				if (customClassName != null && turJDBCCustomImpl != null)
-					turSNJobItem.setAttributes(turJDBCCustomImpl.run(conn, attributes));
-				else
-					turSNJobItem.setAttributes(attributes);
+					attributes = turJDBCCustomImpl.run(conn, attributes);
+
+				// MultiValue
+				String[] strMvFields = mvField.toLowerCase().split(",");
+				for (Entry<String, Object> atribute : attributes.entrySet()) {
+					String attributeName = atribute.getKey();
+					String attributeValue = (String) atribute.getValue();
+					for (String strMvField : strMvFields) {
+						if (attributeName.toLowerCase().equals(strMvField.toLowerCase())) {
+							if (attributeValue != null) {
+								String[] mvValues = attributeValue.split(mvSeparator);
+								List<String> multiValueList = new ArrayList<String>();
+
+								for (String mvValue : mvValues) {
+									multiValueList.add(turFormatValue.format(attributeName, mvValue));
+
+								}
+								attributes.put(attributeName, multiValueList);
+							}
+						}
+					}
+				}
+
+				turSNJobItem.setAttributes(attributes);
 
 				turSNJobItems.add(turSNJobItem);
 
