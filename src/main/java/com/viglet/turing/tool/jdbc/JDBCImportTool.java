@@ -225,7 +225,7 @@ public class JDBCImportTool {
 						attributes.put(nameSensitve, turFormatValue.format(nameSensitve, Integer.toString(intValue)));
 					} else if (className.equals("java.sql.Timestamp")) {
 						TimeZone tz = TimeZone.getTimeZone("UTC");
-						DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
+						DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 						df.setTimeZone(tz);
 						attributes.put(nameSensitve, turFormatValue.format(nameSensitve, df.format(rs.getDate(c))));
 					} else {
