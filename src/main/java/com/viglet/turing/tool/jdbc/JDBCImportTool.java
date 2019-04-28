@@ -33,6 +33,7 @@ import com.viglet.turing.tool.file.TurFileAttributes;
 import com.viglet.turing.tool.impl.TurJDBCCustomImpl;
 import com.viglet.turing.tool.jdbc.format.TurFormatValue;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -159,7 +160,7 @@ public class JDBCImportTool {
 
 				parser.parse(inputStream, handler, metadata, pcontext);
 				TurFileAttributes turFileAttributes = new TurFileAttributes();
-				turFileAttributes.setContent(handler.toString());
+				turFileAttributes.setContent(cleanTextContent(handler.toString()));
 				turFileAttributes.setFile(file);
 				turFileAttributes.setMetadata(metadata);
 
@@ -236,22 +237,30 @@ public class JDBCImportTool {
 				attributes.put("type", type);
 
 				if (filePathField != null && attributes.containsKey(filePathField)) {
-					TurFileAttributes turFileAttributes = this.readFile((String) attributes.get(filePathField));
+					TurFileAttributes turFileAttributes = this.readFile((String) attributes.get(filePathField));					
 					if (turFileAttributes != null) {
+						logger.info("File: " + turFileAttributes.getFile().getAbsolutePath());
 						if (fileSizeField != null && turFileAttributes.getFile() != null) {
 							attributes.put(fileSizeField, turFileAttributes.getFile().length());
+							
+							logger.info("File size: "
+									+ FileUtils.byteCountToDisplaySize(turFileAttributes.getFile().length()));
+							logger.info("File - Content size: " + FileUtils
+									.byteCountToDisplaySize(turFileAttributes.getContent().getBytes().length));
 						} else {
 							logger.info("File without size: " + filePathField);
 						}
 
 						if (fileContentField != null) {
-							attributes.put(fileContentField, turFileAttributes.getContent());
+							if (turFileAttributes.getFile().length() <= 10000000) { // 10 MB
+								attributes.put(fileContentField, turFileAttributes.getContent());
+							} else {
+								logger.info("File size greater than 10 Mb ignoring content ...:");
+							}
 						} else {
 							logger.info("File without content: " + filePathField);
 						}
-
-					} else
-						logger.info("turFileAttributes is null: " + filePathField);
+					}
 				}
 
 				if (customClassName != null && turJDBCCustomImpl != null)
@@ -261,7 +270,7 @@ public class JDBCImportTool {
 				String[] strMvFields = mvField.toLowerCase().split(",");
 				for (Entry<String, Object> atribute : attributes.entrySet()) {
 					String attributeName = atribute.getKey();
-					String attributeValue = (String) atribute.getValue();
+					String attributeValue = String.valueOf(atribute.getValue());
 					for (String strMvField : strMvFields) {
 						if (attributeName.toLowerCase().equals(strMvField.toLowerCase())) {
 							if (attributeValue != null) {
@@ -360,5 +369,14 @@ public class JDBCImportTool {
 		CloseableHttpResponse response = client.execute(httpPost);
 
 		client.close();
+	}
+
+	private static String cleanTextContent(String text) {
+		text = text.replaceAll("[\r\n\t]", " ");
+		text = text.replaceAll("[^\\p{L}&&[^0-9A-Za-z]&&[^\\p{javaSpaceChar}]&&[^\\p{Punct}]]", "").replaceAll("_{2,}",
+				"");
+		// Remove 2 or more spaces
+		text = text.trim().replaceAll(" +", " ");
+		return text.trim();
 	}
 }
