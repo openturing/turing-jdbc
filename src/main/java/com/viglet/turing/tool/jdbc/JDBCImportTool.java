@@ -52,9 +52,11 @@ import org.xml.sax.SAXException;
 public class JDBCImportTool {
 	static final Logger logger = LogManager.getLogger(JDBCImportTool.class.getName());
 
-	@Parameter(names = { "--max-content-size" }, description = "Maximum size that content can be indexed")
-	private int maxContentSize = 5000000; // 5Mb
+	private static final long MEGA_BYTE = 1024L * 1024L;
 
+	@Parameter(names = { "--max-content-size" }, description = "Maximum size that content can be indexed (megabytes)")	
+	private int maxContentMegaByteSize = 5;
+	
 	@Parameter(names = { "--driver", "-d" }, description = "Manually specify JDBC driver class to use", required = true)
 	private String driver = null;
 
@@ -255,13 +257,15 @@ public class JDBCImportTool {
 						}
 
 						if (fileContentField != null) {
-							if (turFileAttributes.getContent().getBytes().length <= maxContentSize) {
+							long maxContentByteSize = maxContentMegaByteSize * MEGA_BYTE;
+							
+							if (turFileAttributes.getContent().getBytes().length <= maxContentByteSize) {
 								attributes.put(fileContentField, turFileAttributes.getContent());
 							} else {
 								attributes.put(fileContentField,
-										turFileAttributes.getContent().substring(0, maxContentSize));
+										turFileAttributes.getContent().substring(0, Math.toIntExact(maxContentByteSize)));
 								logger.info(String.format("File size greater than %s, truncating content ...:",
-										FileUtils.byteCountToDisplaySize(maxContentSize)));
+										FileUtils.byteCountToDisplaySize(maxContentByteSize)));
 							}
 						} else {
 							logger.info("File without content: " + filePathField);
