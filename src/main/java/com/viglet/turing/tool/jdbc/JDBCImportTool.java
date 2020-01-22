@@ -52,6 +52,9 @@ import org.xml.sax.SAXException;
 public class JDBCImportTool {
 	static final Logger logger = LogManager.getLogger(JDBCImportTool.class.getName());
 
+	@Parameter(names = { "--max-content-size" }, description = "Maximum size that content can be indexed")
+	private int maxContentSize = 5000000; // 5Mb
+
 	@Parameter(names = { "--driver", "-d" }, description = "Manually specify JDBC driver class to use", required = true)
 	private String driver = null;
 
@@ -237,12 +240,12 @@ public class JDBCImportTool {
 				attributes.put("type", type);
 
 				if (filePathField != null && attributes.containsKey(filePathField)) {
-					TurFileAttributes turFileAttributes = this.readFile((String) attributes.get(filePathField));					
+					TurFileAttributes turFileAttributes = this.readFile((String) attributes.get(filePathField));
 					if (turFileAttributes != null) {
 						logger.info("File: " + turFileAttributes.getFile().getAbsolutePath());
 						if (fileSizeField != null && turFileAttributes.getFile() != null) {
 							attributes.put(fileSizeField, turFileAttributes.getFile().length());
-							
+
 							logger.info("File size: "
 									+ FileUtils.byteCountToDisplaySize(turFileAttributes.getFile().length()));
 							logger.info("File - Content size: " + FileUtils
@@ -252,10 +255,13 @@ public class JDBCImportTool {
 						}
 
 						if (fileContentField != null) {
-							if (turFileAttributes.getFile().length() <= 10000000) { // 10 MB
+							if (turFileAttributes.getContent().getBytes().length <= maxContentSize) {
 								attributes.put(fileContentField, turFileAttributes.getContent());
 							} else {
-								logger.info("File size greater than 10 Mb ignoring content ...:");
+								attributes.put(fileContentField,
+										turFileAttributes.getContent().substring(0, maxContentSize));
+								logger.info(String.format("File size greater than %s, truncating content ...:",
+										FileUtils.byteCountToDisplaySize(maxContentSize)));
 							}
 						} else {
 							logger.info("File without content: " + filePathField);
