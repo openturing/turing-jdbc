@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2017-2020 the original author or authors. 
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 package com.viglet.turing.tool.jdbc;
 
 import java.io.File;
@@ -36,6 +52,7 @@ import com.viglet.turing.tool.jdbc.format.TurFormatValue;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -49,14 +66,24 @@ import org.apache.tika.parser.ParseContext;
 import org.apache.tika.sax.BodyContentHandler;
 import org.xml.sax.SAXException;
 
+/**
+ * Class that can be used to bootstrap and launch JDBC Import Tool
+ *
+ * @author Alexandre Oliveira
+ * @since 0.3.0
+ *
+ **/
 public class JDBCImportTool {
 	static final Logger logger = LogManager.getLogger(JDBCImportTool.class.getName());
 
 	private static final long MEGA_BYTE = 1024L * 1024L;
 
-	@Parameter(names = { "--max-content-size" }, description = "Maximum size that content can be indexed (megabytes)")	
-	private int maxContentMegaByteSize = 5;
-	
+	@Parameter(names = { "--deindex-before-importing" }, description = "Deindex before importing")
+	private boolean deindexBeforeImporting = false;
+
+	@Parameter(names = { "--max-content-size" }, description = "Maximum size that content can be indexed (megabytes)")
+	private long maxContentMegaByteSize = 5;
+
 	@Parameter(names = { "--driver", "-d" }, description = "Manually specify JDBC driver class to use", required = true)
 	private String driver = null;
 
@@ -133,7 +160,6 @@ public class JDBCImportTool {
 			turFormatValue = new TurFormatValue(main);
 			main.run();
 		} catch (ParameterException e) {
-			// Handle everything on your own, i.e.
 			logger.info("Error: " + e.getLocalizedMessage());
 			jCommander.usage();
 		}
@@ -174,8 +200,7 @@ public class JDBCImportTool {
 				logger.info("File not exists: " + filePath);
 			}
 		} catch (IOException | SAXException | TikaException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error("readFile Exception", e);
 		}
 
 		return null;
@@ -183,6 +208,11 @@ public class JDBCImportTool {
 	}
 
 	public void select() {
+
+		if (this.deindexBeforeImporting) {
+			this.indexDeleteByType();
+		}
+
 		Connection conn = null;
 		Statement stmt = null;
 		TurJDBCCustomImpl turJDBCCustomImpl = null;
@@ -190,7 +220,7 @@ public class JDBCImportTool {
 			try {
 				turJDBCCustomImpl = (TurJDBCCustomImpl) Class.forName(customClassName).newInstance();
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("Custom Class Exception", e);
 			}
 		}
 
@@ -258,12 +288,12 @@ public class JDBCImportTool {
 
 						if (fileContentField != null) {
 							long maxContentByteSize = maxContentMegaByteSize * MEGA_BYTE;
-							
+
 							if (turFileAttributes.getContent().getBytes().length <= maxContentByteSize) {
 								attributes.put(fileContentField, turFileAttributes.getContent());
 							} else {
-								attributes.put(fileContentField,
-										turFileAttributes.getContent().substring(0, Math.toIntExact(maxContentByteSize)));
+								attributes.put(fileContentField, turFileAttributes.getContent().substring(0,
+										Math.toIntExact(maxContentByteSize)));
 								logger.info(String.format("File size greater than %s, truncating content ...:",
 										FileUtils.byteCountToDisplaySize(maxContentByteSize)));
 							}
@@ -320,23 +350,22 @@ public class JDBCImportTool {
 			stmt.close();
 			conn.close();
 		} catch (SQLException se) {
-			// Handle errors for JDBC
-			se.printStackTrace();
+			logger.error("SQLException", se);
 		} catch (Exception e) {
-			// Handle errors for Class.forName
-			e.printStackTrace();
+			logger.error("Exception", e);
 		} finally {
 			// finally block used to close resources
 			try {
 				if (stmt != null)
 					stmt.close();
 			} catch (SQLException se2) {
+				logger.error("SQLException", se2);
 			} // nothing we can do
 			try {
 				if (conn != null)
 					conn.close();
 			} catch (SQLException se) {
-				se.printStackTrace();
+				logger.error("SQLException", se);
 			} // end finally try
 		} // end try
 	}
@@ -388,5 +417,28 @@ public class JDBCImportTool {
 		// Remove 2 or more spaces
 		text = text.trim().replaceAll(" +", " ");
 		return text.trim();
+	}
+
+	public boolean indexDeleteByType() {
+		boolean success = false;
+		try {
+			CloseableHttpClient client = HttpClients.createDefault();
+			HttpGet httpGet = new HttpGet(String.format("%s/api/otsn/broker?action=delete&index=%s&type=%s",
+					this.turingServer, this.site, this.type));
+
+			CloseableHttpResponse response = client.execute(httpGet);
+			if (logger.isDebugEnabled()) {
+				logger.debug("Viglet Turing Delete Request URI:" + httpGet.getURI());
+				logger.debug("Viglet Turing indexer response HTTP result is: " + response.getEntity().toString());
+			}
+			client.close();
+			success = true;
+
+		} catch (Exception e) {
+
+			logger.error("Can't DELETE in Viglet Turing index: " + e.getMessage());
+		}
+
+		return success;
 	}
 }
