@@ -78,7 +78,7 @@ public class JDBCImportTool {
 
 	private static final long MEGA_BYTE = 1024L * 1024L;
 
-	@Parameter(names = { "--deindex-before-importing" }, description = "Deindex before importing")
+	@Parameter(names = { "--deindex-before-importing" }, description = "Deindex before importing", arity = 1)
 	private boolean deindexBeforeImporting = false;
 
 	@Parameter(names = { "--max-content-size" }, description = "Maximum size that content can be indexed (megabytes)")
@@ -112,7 +112,7 @@ public class JDBCImportTool {
 	private int chunk = 100;
 
 	@Parameter(names = { "--include-type-in-id", "-i" }, description = "Include Content Type name in Id", arity = 1)
-	public boolean typeInId = false;
+	private boolean typeInId = false;
 
 	@Parameter(names = { "--multi-valued-separator" }, description = "Multi Valued Separator")
 	private String mvSeparator = ",";
@@ -121,7 +121,7 @@ public class JDBCImportTool {
 	private String mvField = "";
 
 	@Parameter(names = { "--remove-html-tags-field" }, description = "Remove HTML Tags into content of field")
-	public String htmlField = "";
+	private String htmlField = "";
 
 	@Parameter(names = "--file-path-field", description = "Field with File Path", help = true)
 	private String filePathField = null;
@@ -136,15 +136,103 @@ public class JDBCImportTool {
 	private String customClassName = null;
 
 	@Parameter(names = { "--show-output", "-o" }, description = "Show Output", arity = 1)
-	public boolean showOutput = false;
+	private boolean showOutput = false;
 
 	@Parameter(names = { "--encoding" }, description = "Encoding Source")
-	public String encoding = "UTF-8";
+	private String encoding = "UTF-8";
 
 	@Parameter(names = "--help", description = "Print usage instructions", help = true)
 	private boolean help = false;
 
 	private static TurFormatValue turFormatValue = null;
+
+	public boolean isDeindexBeforeImporting() {
+		return deindexBeforeImporting;
+	}
+
+	public long getMaxContentMegaByteSize() {
+		return maxContentMegaByteSize;
+	}
+
+	public String getDriver() {
+		return driver;
+	}
+
+	public String getConnect() {
+		return connect;
+	}
+
+	public String getQuery() {
+		return query;
+	}
+
+	public String getSite() {
+		return site;
+	}
+
+	public String getTuringServer() {
+		return turingServer;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public String getType() {
+		return type;
+	}
+
+	public int getChunk() {
+		return chunk;
+	}
+
+	public boolean isTypeInId() {
+		return typeInId;
+	}
+
+	public String getMvSeparator() {
+		return mvSeparator;
+	}
+
+	public String getMvField() {
+		return mvField;
+	}
+
+	public String getHtmlField() {
+		return htmlField;
+	}
+
+	public String getFilePathField() {
+		return filePathField;
+	}
+
+	public String getFileContentField() {
+		return fileContentField;
+	}
+
+	public String getFileSizeField() {
+		return fileSizeField;
+	}
+
+	public String getCustomClassName() {
+		return customClassName;
+	}
+
+	public boolean isShowOutput() {
+		return showOutput;
+	}
+
+	public String getEncoding() {
+		return encoding;
+	}
+
+	public boolean isHelp() {
+		return help;
+	}
 
 	public static void main(String... argv) {
 
@@ -345,7 +433,6 @@ public class JDBCImportTool {
 				turSNJobItems = new TurSNJobItems();
 				chunkCurrent = 0;
 			}
-			// STEP 6: Clean-up environment
 			rs.close();
 			stmt.close();
 			conn.close();
@@ -354,20 +441,19 @@ public class JDBCImportTool {
 		} catch (Exception e) {
 			logger.error("Exception", e);
 		} finally {
-			// finally block used to close resources
 			try {
 				if (stmt != null)
 					stmt.close();
 			} catch (SQLException se2) {
 				logger.error("SQLException", se2);
-			} // nothing we can do
+			} 
 			try {
 				if (conn != null)
 					conn.close();
 			} catch (SQLException se) {
 				logger.error("SQLException", se);
-			} // end finally try
-		} // end try
+			}
+		}
 	}
 
 	public void sendServer(TurSNJobItems turSNJobItems, int chunkTotal) throws ClientProtocolException, IOException {
@@ -424,7 +510,7 @@ public class JDBCImportTool {
 		try {
 			CloseableHttpClient client = HttpClients.createDefault();
 			HttpGet httpGet = new HttpGet(String.format("%s/api/otsn/broker?action=delete&index=%s&type=%s",
-					this.turingServer, this.site, this.type));
+					this.getTuringServer(), this.getSite(), this.getType()));
 
 			CloseableHttpResponse response = client.execute(httpGet);
 			if (logger.isDebugEnabled()) {

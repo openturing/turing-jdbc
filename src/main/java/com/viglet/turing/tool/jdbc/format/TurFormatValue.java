@@ -31,7 +31,7 @@ public class TurFormatValue {
 		this.jdbcImportTool = jdbcImportTool;
 	}
 	public String format(String name, String value) {
-		String[] strHTMLFields = jdbcImportTool.htmlField.toLowerCase().split(",");
+		String[] strHTMLFields = jdbcImportTool.getHtmlField().toLowerCase().split(",");
 		for (String strHTMLField : strHTMLFields) {
 			if (name.toLowerCase().equals(strHTMLField.toLowerCase())) {
 				if (name.toLowerCase().equals("id")) {
@@ -50,7 +50,7 @@ public class TurFormatValue {
 	}
 
 	public String idField(int idValue) {
-		if (jdbcImportTool.typeInId) {
+		if (jdbcImportTool.isTypeInId()) {
 			return jdbcImportTool.type + idValue;
 		} else {
 			return Integer.toString(idValue);
@@ -58,7 +58,7 @@ public class TurFormatValue {
 	}
 
 	public String idField(String idValue) {
-		if (jdbcImportTool.typeInId) {
+		if (jdbcImportTool.isTypeInId()) {
 			return jdbcImportTool.type + idValue;
 		} else {
 			return idValue;
