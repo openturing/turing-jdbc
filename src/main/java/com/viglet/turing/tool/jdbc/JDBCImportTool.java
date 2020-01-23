@@ -57,6 +57,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tika.exception.TikaException;
@@ -446,7 +447,7 @@ public class JDBCImportTool {
 					stmt.close();
 			} catch (SQLException se2) {
 				logger.error("SQLException", se2);
-			} 
+			}
 			try {
 				if (conn != null)
 					conn.close();
@@ -509,20 +510,21 @@ public class JDBCImportTool {
 		boolean success = false;
 		try {
 			CloseableHttpClient client = HttpClients.createDefault();
-			HttpGet httpGet = new HttpGet(String.format("%s/api/otsn/broker?action=delete&index=%s&type=%s",
+			HttpGet httpGet = new HttpGet(String.format("%s/api/otsn/broker?action=delete&index=%s&type=%s&config=none",
 					this.getTuringServer(), this.getSite(), this.getType()));
 
 			CloseableHttpResponse response = client.execute(httpGet);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Viglet Turing Delete Request URI:" + httpGet.getURI());
-				logger.debug("Viglet Turing indexer response HTTP result is: " + response.getEntity().toString());
+				logger.debug("Viglet Turing indexer response HTTP result is: "
+						+ EntityUtils.toString(response.getEntity(), "UTF-8"));
 			}
 			client.close();
 			success = true;
 
 		} catch (Exception e) {
 
-			logger.error("Can't DELETE in Viglet Turing index: " + e.getMessage());
+			logger.error("Can't Delete in Viglet Turing index: " + e.getMessage());
 		}
 
 		return success;
