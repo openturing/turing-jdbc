@@ -17,7 +17,7 @@ $ cd turing-jdbc
 Use Gradle to generate Turing JDBC Connector executable JAR file.
 
 ```shell
-$ ./gradlew shadowJar
+$ ./gradlew build
 ```
 
 #### 2.1 Run
@@ -33,101 +33,102 @@ $ java -jar build/libs/turing-jdbc.jar <PARAMETERS>
 ## Required
 *--connect, -c*
 
-      Specify JDBC connect string
+	Specify JDBC connect string
 
 *--driver, -d*
 
-      Manually specify JDBC driver class to use
+	Manually specify JDBC driver class to use
 
 *--query, -q*
 
-      Import the results of statement
+	Import the results of statement
 
 *--site*
 
-      Specify the Semantic Navigation Site
+	Specify the Semantic Navigation Site
                         
 ## Optional
 
  *--chunk, -z*
  
-      Number of items to be sent to the queue
-      Default: 100
+	Number of items to be sent to the queue
+	Default: 100
  
  *--class-name*
       
-      Customized Class to modified rows
+	Customized Class to modified rows
             
 *--deindex-before-importing*
 
-      Deindex before importing
-      Default: false
+	Deindex before importing
+	Default: false
       
 *--encoding*
 
-      Encoding Source
-      Default: UTF-8
+	Encoding Source
+	Default: UTF-8
       
 *--file-content-field*
 
-      Field that shows Content of File
+	Field that shows Content of File
       
 *--file-path-field*
 
-      Field with File Path
+	Field with File Path
       
 *--file-size-field*
 
-      Field that shows Size of File in bytes
+	Field that shows Size of File in bytes
+	
 *--help*
 
-      Print usage instructions
+	Print usage instructions
 
 *--include-type-in-id, -i*
 
-      Include Content Type name in Id
-      Default: false
+	Include Content Type name in Id
+	Default: false
 
 *--max-content-size*
 
-      Maximum size that content can be indexed (megabytes)
-      Default: 5
+	Maximum size that content can be indexed (megabytes)
+	Default: 5
       
 *--multi-valued-field*
 
-      Multi Valued Fields
+	Multi Valued Fields
       
 *--multi-valued-separator*
 
-      Multi Valued Separator
-      Default: ,
+	Multi Valued Separator
+	Default: ,
 
 *--password, -p*
 
-      Set authentication password
+	Set authentication password
 
 *--remove-html-tags-field*
 
-      Remove HTML Tags into content of field
+	Remove HTML Tags into content of field
       
 *--server, -s*
 
-      Viglet Turing Server
-      Default: http://localhost:2700
+	Viglet Turing Server
+	Default: http://localhost:2700
       
 *--show-output, -o*
 
-      Show Output
-      Default: false
+	Show Output
+	Default: false
             
 *--type, -t*
 
-      Set Content Type name
-      Default: CONTENT_TYPE
+	Set Content Type name
+	Default: CONTENT_TYPE
       
 *--username, -u*
 
-      Set authentication username
+	Set authentication username
 
 # Example
 
