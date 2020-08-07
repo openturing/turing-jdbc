@@ -1,3 +1,4 @@
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=openturing_turing-jdbc&metric=security_rating)](https://sonarcloud.io/dashboard?id=openturing_turing-jdbc)
 [![viglet_logo.png](https://openturing.github.io/turing/img/banner/viglet_turing.png)](http://viglet.com/turing)
 
 # Turing JDBC Connector
