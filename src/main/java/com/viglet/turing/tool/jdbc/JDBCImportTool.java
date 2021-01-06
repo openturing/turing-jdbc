@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -32,6 +33,7 @@ import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,7 @@ import com.viglet.turing.tool.impl.TurJDBCCustomImpl;
 import com.viglet.turing.tool.jdbc.format.TurFormatValue;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.http.HttpHeaders;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -100,11 +103,17 @@ public class JDBCImportTool {
 	@Parameter(names = { "--server", "-s" }, description = "Viglet Turing Server")
 	private String turingServer = "http://localhost:2700";
 
-	@Parameter(names = { "--username", "-u" }, description = "Set authentication username")
-	private String username = null;
+	@Parameter(names = { "--username", "-u" }, description = "Set authentication Turing username")
+	private String turUsername = null;
 
-	@Parameter(names = { "--password", "-p" }, description = "Set authentication password")
-	private String password = null;
+	@Parameter(names = { "--password", "-p" }, description = "Set authentication Turing password")
+	private String turPassword = null;
+
+	@Parameter(names = { "--db-username" }, description = "Set authentication database username")
+	private String dbUsername = null;
+
+	@Parameter(names = { "--db-password" }, description = "Set authentication database password")
+	private String dbPassword = null;
 
 	@Parameter(names = { "--type", "-t" }, description = "Set Content Type name")
 	public String type = "CONTENT_TYPE";
@@ -175,12 +184,36 @@ public class JDBCImportTool {
 		return turingServer;
 	}
 
-	public String getUsername() {
-		return username;
+	public String getTurUsername() {
+		return turUsername;
 	}
 
-	public String getPassword() {
-		return password;
+	public void setTurUsername(String turUsername) {
+		this.turUsername = turUsername;
+	}
+
+	public String getTurPassword() {
+		return turPassword;
+	}
+
+	public void setTurPassword(String turPassword) {
+		this.turPassword = turPassword;
+	}
+
+	public String getDbUsername() {
+		return dbUsername;
+	}
+
+	public void setDbUsername(String dbUsername) {
+		this.dbUsername = dbUsername;
+	}
+
+	public String getDbPassword() {
+		return dbPassword;
+	}
+
+	public void setDbPassword(String dbPassword) {
+		this.dbPassword = dbPassword;
 	}
 
 	public String getType() {
@@ -259,7 +292,7 @@ public class JDBCImportTool {
 		logger.info(String.format("driver: %s", driver));
 		logger.info(String.format("connect: %s", connect));
 		logger.info(String.format("query: %s", query));
-		logger.info(String.format("username: %s", username));
+		logger.info(String.format("username: %s", dbUsername));
 
 		this.select();
 	}
@@ -319,7 +352,7 @@ public class JDBCImportTool {
 
 			// Open a connection
 			logger.info("Connecting to database...");
-			conn = DriverManager.getConnection(connect, username, password);
+			conn = DriverManager.getConnection(connect, dbUsername, dbPassword);
 
 			// Execute a query
 			logger.info("Creating statement...");
@@ -491,10 +524,21 @@ public class JDBCImportTool {
 		httpPost.setHeader("Content-type", "application/json");
 		httpPost.setHeader("Accept-Encoding", "UTF-8");
 
+		basicAuth(httpPost);
+		
 		@SuppressWarnings("unused")
 		CloseableHttpResponse response = client.execute(httpPost);
 
 		client.close();
+	}
+
+	private void basicAuth(HttpPost httpPost) {
+		if (turUsername != null) {
+			String auth = String.format("%s:%s", turUsername, turPassword);
+			String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
+			String authHeader = "Basic " + encodedAuth;
+			httpPost.setHeader(HttpHeaders.AUTHORIZATION, authHeader);
+		}
 	}
 
 	private static String cleanTextContent(String text) {
