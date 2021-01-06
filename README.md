@@ -18,7 +18,7 @@ $ cd turing-jdbc
 Use Gradle to generate Turing JDBC Connector executable JAR file.
 
 ```shell
-$ ./gradlew build
+$ ./gradlew shadowJar
 ```
 
 #### 2.1 Run
